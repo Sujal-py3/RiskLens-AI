@@ -1,10 +1,20 @@
-# Credentials and local environment configs
+# Credentials and local environment
 .env
 
-# Local cache directories
+# Cache — rebuilt automatically on first run
 cache/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
-# Local scratch/test scripts
+# ChromaDB local persistence (in-memory is used in production)
+.chromadb/
+
+# Local scratch/test scripts (not part of the deployable app)
 scratch/
+
+# OS artefacts
+.DS_Store
+Thumbs.db
