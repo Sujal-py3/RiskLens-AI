@@ -1,10 +1,13 @@
 # Credentials and local environment configs
 .env
 
-# Local cache directories
+# Local cache directories (runtime-generated, not committed)
 cache/
 __pycache__/
 *.pyc
 
 # Local scratch/test scripts
 scratch/
+
+# data/ is committed EXCEPT the old nist_embeddings.npy file
+data/nist_embeddings.npy

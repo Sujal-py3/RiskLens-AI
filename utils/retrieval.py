@@ -1,11 +1,9 @@
 import os
 import json
-import csv
 import requests
 import pandas as pd
-
-# Heavy imports (sentence_transformers, numpy, chromadb) are deferred to
-# inside class methods so the module can be imported without loading torch.
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 CISA_KEV_URL   = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 KEV_CACHE_PATH = os.path.join("cache", "kev.json")
@@ -51,247 +49,95 @@ def fetch_cisa_kev() -> set:
     return _KEV_CORE_FALLBACK
 
 
-# ── NIST SP 800-53 Rev 5 ──────────────────────────────────────────────────────
-
-NIST_URL        = "https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json"
-NIST_CACHE_PATH = os.path.join("cache", "nist_controls.csv")
-
-_NIST_FALLBACK = [
-    {"control_id": "AC-2",  "title": "Account Management",                          "prose": "The organization manages information system accounts, including establishing, activating, modifying, reviewing, disabling, and terminating accounts in accordance with established procedures."},
-    {"control_id": "AC-3",  "title": "Access Enforcement",                          "prose": "The information system enforces approved authorizations for logical access to information and system resources in accordance with applicable access control policies."},
-    {"control_id": "AC-7",  "title": "Unsuccessful Logon Attempts",                 "prose": "The information system enforces a limit of consecutive invalid logon attempts by a user during a specified time period and automatically locks the account."},
-    {"control_id": "AC-12", "title": "Session Termination",                         "prose": "The information system automatically terminates a user session after a defined condition or period of inactivity."},
-    {"control_id": "CA-7",  "title": "Continuous Monitoring",                       "prose": "The organization establishes a continuous monitoring program that includes configuration management, security impact analyses of changes, and ongoing assessment of security controls."},
-    {"control_id": "CM-2",  "title": "Baseline Configuration",                      "prose": "The organization develops, documents, and maintains under configuration control, a current baseline configuration of the information system."},
-    {"control_id": "IA-2",  "title": "Identification and Authentication",            "prose": "The information system uniquely identifies and authenticates organizational users. Enforces multi-factor authentication (MFA)."},
-    {"control_id": "PE-3",  "title": "Physical Access Control",                     "prose": "The organization enforces physical access authorizations for entry and exit at physical facilities containing information systems."},
-    {"control_id": "SC-7",  "title": "Boundary Protection",                         "prose": "The information system monitors and controls communications at the external boundary of the system and at key internal boundaries using firewalls, gateways, and proxies."},
-    {"control_id": "SC-28", "title": "Protection of Information at Rest",            "prose": "The information system protects the confidentiality and integrity of information at rest using cryptographic mechanisms."},
-    {"control_id": "SI-2",  "title": "Flaw Remediation",                            "prose": "The organization identifies, reports, and corrects information system flaws (patches) in a timely manner, deploying security updates to resolve known vulnerabilities."},
-    {"control_id": "SI-4",  "title": "Information System Monitoring",               "prose": "The organization monitors the information system to detect attacks, unauthorized connections, and indicators of potential compromise."},
-]
-
-
-def _collect_statement_prose(parts: list) -> list:
-    """Recursively collect prose only from 'statement' and 'item' parts in an OSCAL control."""
-    result = []
-    for part in (parts or []):
-        if not isinstance(part, dict):
-            continue
-        if part.get("name") in ("statement", "item"):
-            if part.get("prose"):
-                result.append(str(part["prose"]))
-            result.extend(_collect_statement_prose(part.get("parts", [])))
-    return result
-
-
-def _collect_all_prose(obj) -> list:
-    """Recursively collect all prose strings from an object, skipping nested controls."""
-    result = []
-    if isinstance(obj, dict):
-        if obj.get("prose"):
-            result.append(str(obj["prose"]))
-        for k, v in obj.items():
-            if k != "controls":
-                result.extend(_collect_all_prose(v))
-    elif isinstance(obj, list):
-        for item in obj:
-            result.extend(_collect_all_prose(item))
-    return result
-
-
-def _extract_controls(control_list: list) -> list:
-    """
-    Recursively extract controls from an OSCAL control list.
-    Skips withdrawn controls but still processes their children.
-    """
-    extracted = []
-    for ctrl in control_list:
-        withdrawn = any(
-            p.get("name") == "status" and str(p.get("value", "")).strip().lower() == "withdrawn"
-            for p in ctrl.get("props", [])
-        )
-        if withdrawn:
-            extracted.extend(_extract_controls(ctrl.get("controls", [])))
-            continue
-
-        ctrl_id = str(ctrl.get("id", "")).strip().upper()
-        title   = str(ctrl.get("title", "")).strip()
-        prose_parts = _collect_statement_prose(ctrl.get("parts", []))
-        if not prose_parts:
-            prose_parts = _collect_all_prose(ctrl)
-        prose = " ".join(prose_parts).strip()
-
-        if ctrl_id and (title or prose):
-            extracted.append({"control_id": ctrl_id, "title": title, "prose": prose})
-
-        extracted.extend(_extract_controls(ctrl.get("controls", [])))
-
-    return extracted
-
-
-def _parse_groups(group_list: list) -> list:
-    """Recursively parse OSCAL groups to extract all controls."""
-    extracted = []
-    for group in group_list:
-        extracted.extend(_extract_controls(group.get("controls", [])))
-        extracted.extend(_parse_groups(group.get("groups", [])))
-    return extracted
-
-
-def _fetch_and_cache_nist() -> None:
-    """
-    Download the NIST SP 800-53 Rev 5 OSCAL catalog and cache it as CSV.
-    Writes the fallback catalog if the download fails.
-    """
-    os.makedirs("cache", exist_ok=True)
-    if os.path.exists(NIST_CACHE_PATH):
-        print(f"Loading NIST controls from existing cache: {NIST_CACHE_PATH}")
-        return
-
-    try:
-        print(f"Downloading catalog from {NIST_URL}...")
-        r = requests.get(NIST_URL, timeout=15)
-        r.raise_for_status()
-        groups   = r.json().get("catalog", {}).get("groups", [])
-        controls = _parse_groups(groups)
-        if not controls:
-            raise ValueError("No controls parsed from JSON.")
-        with open(NIST_CACHE_PATH, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["control_id", "title", "prose"])
-            writer.writeheader()
-            writer.writerows(controls)
-        print(f"Cached {len(controls)} NIST controls to {NIST_CACHE_PATH}.")
-    except Exception as e:
-        print(f"NIST catalog download failed: {e}. Writing fallback catalog...")
-        with open(NIST_CACHE_PATH, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["control_id", "title", "prose"])
-            writer.writeheader()
-            writer.writerows(_NIST_FALLBACK)
-
-
-# ── RAG: ChromaDB + in-memory numpy fallback ──────────────────────────────────
+# ── RAG: Precomputed Embeddings + Sklearn Cosine Similarity ──────────────────
 
 class NistRAG:
     """
-    Semantic retrieval for NIST SP 800-53 controls.
-    Uses ChromaDB when available; falls back to in-memory cosine similarity.
-
-    All heavy dependencies (sentence-transformers, torch, numpy, chromadb) are
-    imported lazily inside methods to keep module import lightweight.
+    Retrieves NIST SP 800-53 controls matching vulnerability queries.
+    Uses precomputed embeddings loaded from data/precomputed_embeddings.npz and
+    sklearn cosine similarity for low-memory, high-speed execution.
     """
 
     def __init__(self):
-        # Deferred import — this is where torch loads for the first time
-        from sentence_transformers import SentenceTransformer
-
-        self.model        = SentenceTransformer("all-MiniLM-L6-v2")
-        self.use_chromadb = False
-        self.collection   = None
-
-        _fetch_and_cache_nist()
-
-        try:
-            self.controls_df = pd.read_csv(NIST_CACHE_PATH)
-            self.controls_df["prose"]      = self.controls_df["prose"].fillna("")
-            self.controls_df["title"]      = self.controls_df["title"].fillna("")
-            self.controls_df["control_id"] = (
-                self.controls_df["control_id"].fillna("").astype(str).str.strip().str.upper()
+        npz_path = os.path.join("data", "precomputed_embeddings.npz")
+        if not os.path.exists(npz_path):
+            error_msg = (
+                f"CRITICAL ERROR: Precomputed embeddings cache file '{npz_path}' is missing! "
+                "Please run 'python scratch/precompute_embeddings.py' locally to generate it."
             )
-        except Exception as e:
-            print(f"Error loading NIST controls CSV: {e}")
-            self.controls_df = pd.DataFrame(_NIST_FALLBACK)
+            print(error_msg)
+            raise FileNotFoundError(error_msg)
 
-        self.valid_ids = set(self.controls_df["control_id"].tolist())
-        self._build_index()
-
-    def _build_index(self) -> None:
-        """Embed all controls and populate the vector store."""
-        documents = [
-            f"Control ID: {row['control_id']}\nTitle: {row['title']}\nDescription: {row['prose']}"
-            for _, row in self.controls_df.iterrows()
-        ]
+        print(f"Loading precomputed embeddings from {npz_path}...")
         try:
-            import chromadb
-            print("Initializing ChromaDB collection...")
-            self.chroma_client = chromadb.Client()
-            self.collection    = self.chroma_client.create_collection("nist_controls")
-            embeddings = self.model.encode(documents).tolist()
-            self.collection.add(
-                embeddings=embeddings,
-                documents=documents,
-                metadatas=[
-                    {"control_id": row["control_id"], "title": row["title"], "prose": row["prose"]}
-                    for _, row in self.controls_df.iterrows()
-                ],
-                ids=self.controls_df["control_id"].tolist(),
-            )
-            self.use_chromadb = True
-            print("ChromaDB initialized and populated successfully.")
+            data = np.load(npz_path, allow_pickle=True)
+            self.nist_embeddings = data["nist_embeddings"]
+            self.nist_ids        = [str(x).strip().upper() for x in data["nist_ids"]]
+            self.nist_titles     = [str(x).strip() for x in data["nist_titles"]]
+            self.nist_proses     = [str(x).strip() for x in data["nist_proses"]]
+            
+            # Map query text to its precomputed embedding
+            self.query_texts       = [str(x).strip() for x in data["query_texts"]]
+            self.query_embeddings = data["query_embeddings"]
+            
+            self.query_to_emb = {
+                q: self.query_embeddings[idx]
+                for idx, q in enumerate(self.query_texts)
+            }
+            
+            print(f"Successfully loaded {len(self.nist_ids)} controls and {len(self.query_texts)} precomputed queries.")
         except Exception as e:
-            print(f"ChromaDB unavailable: {e}. Using in-memory numpy search.")
-            self._doc_texts       = documents
-            self._ctrl_embeddings = self.model.encode(documents)
+            error_msg = f"CRITICAL ERROR: Failed to load precomputed embeddings: {e}"
+            print(error_msg)
+            raise RuntimeError(error_msg)
 
     def retrieve_controls(self, query: str, top_k: int = 2) -> list:
         """
         Retrieve the top_k NIST controls for a query.
-
-        Similarity thresholds:
-          ChromaDB (L2 distance): max 1.3
-          Numpy (cosine similarity): min 0.35
+        Uses sklearn cosine similarity between precomputed control and query embeddings.
         """
+        query = query.strip()
         if not query:
             return []
 
-        try:
-            if self.use_chromadb and self.collection:
-                query_emb = self.model.encode(query).tolist()
-                res       = self.collection.query(query_embeddings=[query_emb], n_results=top_k)
-                results   = []
-                if res and res.get("metadatas"):
-                    for meta, dist in zip(res["metadatas"][0], res.get("distances", [[]])[0]):
-                        if dist > 1.3:
-                            continue
-                        cid = str(meta["control_id"]).strip().upper()
-                        if cid in self.valid_ids:
-                            results.append({"control_id": cid, "title": meta["title"], "prose": meta["prose"]})
-                return results
-
-            # Numpy cosine similarity fallback
-            import numpy as np
-            query_emb = self.model.encode(query)
-            norms     = np.linalg.norm(self._ctrl_embeddings, axis=1)
-            norm_q    = np.linalg.norm(query_emb)
-            if norm_q == 0 or len(norms) == 0:
-                return []
-            sims    = np.dot(self._ctrl_embeddings, query_emb) / (norms * norm_q)
-            top_idx = np.argsort(sims)[::-1][:top_k]
-            results = []
-            for idx in top_idx:
-                if sims[idx] < 0.35:
-                    continue
-                row = self.controls_df.iloc[int(idx)]
-                cid = str(row["control_id"]).strip().upper()
-                if cid in self.valid_ids:
-                    results.append({"control_id": cid, "title": row["title"], "prose": row["prose"]})
-            return results
-
-        except Exception as e:
-            print(f"RAG retrieval error: {e}. Falling back to keyword search...")
+        # Check if the query exists in the precomputed embeddings cache
+        if query not in self.query_to_emb:
+            print(f"WARNING: Query not found in precomputed embeddings cache: '{query}'")
+            # Fallback keyword match if embedding is missing
             keywords = query.lower().split()
-            scored   = []
-            for idx, row in self.controls_df.iterrows():
-                text  = f"{row['control_id']} {row['title']} {row['prose']}".lower()
+            scored = []
+            for idx in range(len(self.nist_ids)):
+                text = f"{self.nist_ids[idx]} {self.nist_titles[idx]} {self.nist_proses[idx]}".lower()
                 score = sum(1 for kw in keywords if kw in text)
                 if score >= 2:
                     scored.append((score, idx))
             scored.sort(reverse=True)
             return [
                 {
-                    "control_id": str(self.controls_df.iloc[idx]["control_id"]).strip().upper(),
-                    "title":      self.controls_df.iloc[idx]["title"],
-                    "prose":      self.controls_df.iloc[idx]["prose"],
+                    "control_id": self.nist_ids[idx],
+                    "title":      self.nist_titles[idx],
+                    "prose":      self.nist_proses[idx]
                 }
                 for _, idx in scored[:top_k]
             ]
+
+        try:
+            query_emb = self.query_to_emb[query].reshape(1, -1)
+            # Compute cosine similarities using sklearn
+            sims = cosine_similarity(self.nist_embeddings, query_emb).flatten()
+            
+            # Get sorted indices in descending order
+            top_idx = np.argsort(sims)[::-1][:top_k]
+            results = []
+            for idx in top_idx:
+                if sims[idx] < 0.35:  # Cosine similarity threshold
+                    continue
+                results.append({
+                    "control_id": self.nist_ids[idx],
+                    "title":      self.nist_titles[idx],
+                    "prose":      self.nist_proses[idx]
+                })
+            return results
+        except Exception as e:
+            print(f"Error during cosine similarity retrieval: {e}")
+            return []
