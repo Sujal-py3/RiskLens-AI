@@ -1,6 +1,5 @@
 import os
 import re
-from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -251,6 +250,7 @@ class GroqClientWrapper:
     """
 
     def __init__(self):
+        from groq import Groq
         api_key = os.getenv("GROQ_API_KEY", "")
         self.client = None
         if api_key and "your_groq_api_key" not in api_key and len(api_key.strip()) > 10:

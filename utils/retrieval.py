@@ -3,17 +3,13 @@ import json
 import csv
 import requests
 import pandas as pd
-import numpy as np
-from sentence_transformers import SentenceTransformer
 
-os.makedirs("cache", exist_ok=True)
+# Heavy imports (sentence_transformers, numpy, chromadb) are deferred to
+# inside class methods so the module can be imported without loading torch.
 
-# ── CISA KEV ──────────────────────────────────────────────────────────────────
-
-CISA_KEV_URL  = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+CISA_KEV_URL   = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 KEV_CACHE_PATH = os.path.join("cache", "kev.json")
 
-# Core CVEs present in our vulnerability dataset — used as a last-resort fallback.
 _KEV_CORE_FALLBACK = {
     "CVE-2024-21762", "CVE-2024-55591", "CVE-2023-22527", "CVE-2023-22515",
     "CVE-2024-27198", "CVE-2024-23897", "CVE-2023-4966",  "CVE-2024-4577",
@@ -27,6 +23,7 @@ def fetch_cisa_kev() -> set:
     Return a set of CVE IDs from the CISA KEV catalog.
     Falls back to the local cache, then to a hard-coded core set.
     """
+    os.makedirs("cache", exist_ok=True)
     try:
         print(f"Fetching CISA KEV from {CISA_KEV_URL}...")
         r = requests.get(CISA_KEV_URL, timeout=10)
@@ -59,7 +56,6 @@ def fetch_cisa_kev() -> set:
 NIST_URL        = "https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json"
 NIST_CACHE_PATH = os.path.join("cache", "nist_controls.csv")
 
-# Minimal fallback catalog used only when the download and cache both fail.
 _NIST_FALLBACK = [
     {"control_id": "AC-2",  "title": "Account Management",                          "prose": "The organization manages information system accounts, including establishing, activating, modifying, reviewing, disabling, and terminating accounts in accordance with established procedures."},
     {"control_id": "AC-3",  "title": "Access Enforcement",                          "prose": "The information system enforces approved authorizations for logical access to information and system resources in accordance with applicable access control policies."},
@@ -108,7 +104,6 @@ def _extract_controls(control_list: list) -> list:
     """
     Recursively extract controls from an OSCAL control list.
     Skips withdrawn controls but still processes their children.
-    Prose is taken from statement/item parts; falls back to all prose if empty.
     """
     extracted = []
     for ctrl in control_list:
@@ -149,6 +144,7 @@ def _fetch_and_cache_nist() -> None:
     Download the NIST SP 800-53 Rev 5 OSCAL catalog and cache it as CSV.
     Writes the fallback catalog if the download fails.
     """
+    os.makedirs("cache", exist_ok=True)
     if os.path.exists(NIST_CACHE_PATH):
         print(f"Loading NIST controls from existing cache: {NIST_CACHE_PATH}")
         return
@@ -165,9 +161,7 @@ def _fetch_and_cache_nist() -> None:
             writer = csv.DictWriter(f, fieldnames=["control_id", "title", "prose"])
             writer.writeheader()
             writer.writerows(controls)
-        print(f"Parsing OSCAL catalog and extracting controls...")
-        print(f"Rebuilding NIST control cache: {NIST_CACHE_PATH} ({len(controls)} controls)")
-        print("NIST control cache saved successfully.")
+        print(f"Cached {len(controls)} NIST controls to {NIST_CACHE_PATH}.")
     except Exception as e:
         print(f"NIST catalog download failed: {e}. Writing fallback catalog...")
         with open(NIST_CACHE_PATH, "w", encoding="utf-8", newline="") as f:
@@ -181,11 +175,16 @@ def _fetch_and_cache_nist() -> None:
 class NistRAG:
     """
     Semantic retrieval for NIST SP 800-53 controls.
-    Uses ChromaDB when available; falls back to an in-memory numpy cosine search.
-    Results are validated against similarity thresholds to prevent irrelevant matches.
+    Uses ChromaDB when available; falls back to in-memory cosine similarity.
+
+    All heavy dependencies (sentence-transformers, torch, numpy, chromadb) are
+    imported lazily inside methods to keep module import lightweight.
     """
 
     def __init__(self):
+        # Deferred import — this is where torch loads for the first time
+        from sentence_transformers import SentenceTransformer
+
         self.model        = SentenceTransformer("all-MiniLM-L6-v2")
         self.use_chromadb = False
         self.collection   = None
@@ -207,7 +206,7 @@ class NistRAG:
         self._build_index()
 
     def _build_index(self) -> None:
-        """Embed all controls and populate the ChromaDB collection (or numpy fallback)."""
+        """Embed all controls and populate the vector store."""
         documents = [
             f"Control ID: {row['control_id']}\nTitle: {row['title']}\nDescription: {row['prose']}"
             for _, row in self.controls_df.iterrows()
@@ -231,8 +230,8 @@ class NistRAG:
             print("ChromaDB initialized and populated successfully.")
         except Exception as e:
             print(f"ChromaDB unavailable: {e}. Using in-memory numpy search.")
-            self._doc_texts        = documents
-            self._ctrl_embeddings  = self.model.encode(documents)
+            self._doc_texts       = documents
+            self._ctrl_embeddings = self.model.encode(documents)
 
     def retrieve_controls(self, query: str, top_k: int = 2) -> list:
         """
@@ -241,7 +240,6 @@ class NistRAG:
         Similarity thresholds:
           ChromaDB (L2 distance): max 1.3
           Numpy (cosine similarity): min 0.35
-        Controls below threshold are discarded to prevent irrelevant matches.
         """
         if not query:
             return []
@@ -261,14 +259,15 @@ class NistRAG:
                 return results
 
             # Numpy cosine similarity fallback
+            import numpy as np
             query_emb = self.model.encode(query)
             norms     = np.linalg.norm(self._ctrl_embeddings, axis=1)
             norm_q    = np.linalg.norm(query_emb)
             if norm_q == 0 or len(norms) == 0:
                 return []
-            sims       = np.dot(self._ctrl_embeddings, query_emb) / (norms * norm_q)
-            top_idx    = np.argsort(sims)[::-1][:top_k]
-            results    = []
+            sims    = np.dot(self._ctrl_embeddings, query_emb) / (norms * norm_q)
+            top_idx = np.argsort(sims)[::-1][:top_k]
+            results = []
             for idx in top_idx:
                 if sims[idx] < 0.35:
                     continue
@@ -280,7 +279,6 @@ class NistRAG:
 
         except Exception as e:
             print(f"RAG retrieval error: {e}. Falling back to keyword search...")
-            # Keyword overlap fallback — requires at least 2 matching tokens
             keywords = query.lower().split()
             scored   = []
             for idx, row in self.controls_df.iterrows():

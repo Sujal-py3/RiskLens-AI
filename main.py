@@ -29,15 +29,24 @@ def dashboard():
     return HTMLResponse("<h1>Dashboard not found</h1>", status_code=404)
 
 
-# Pre-initialize heavy components at startup to avoid cold-start latency on first request.
-try:
-    print("Pre-initializing systems...")
-    rag = NistRAG()
-    llm_wrapper = GroqClientWrapper()
-except Exception as e:
-    print(f"Error pre-initializing systems: {e}")
-    rag = None
-    llm_wrapper = None
+# Lazy singletons — heavy components load only on first /analyze request.
+_rag = None
+_llm = None
+
+def _get_rag():
+    global _rag
+    if _rag is None:
+        print("First request — loading embedding model and building vector index...")
+        _rag = NistRAG()
+    return _rag
+
+def _get_llm():
+    global _llm
+    if _llm is None:
+        _llm = GroqClientWrapper()
+    return _llm
+
+print("RiskLens AI ready (lightweight mode — heavy components load on first /analyze request).")
 
 
 def load_data() -> dict:
@@ -54,7 +63,6 @@ def load_data() -> dict:
     for key, filename in files.items():
         path = os.path.join(data_dir, filename)
         if not os.path.exists(path):
-            # Legacy fallback for older Dataset/ directory layout
             alt_path = os.path.join("Dataset", filename)
             if os.path.exists(alt_path):
                 path = alt_path
@@ -106,16 +114,8 @@ def analyze_risks():
       5. Retrieve NIST SP 800-53 controls via RAG
       6. Generate and return a Markdown risk brief
     """
-    global rag, llm_wrapper
-
-    if rag is None:
-        try:
-            rag = NistRAG()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to initialize NIST RAG: {e}")
-
-    if llm_wrapper is None:
-        llm_wrapper = GroqClientWrapper()
+    rag = _get_rag()
+    llm = _get_llm()
 
     try:
         data = load_data()
@@ -128,12 +128,11 @@ def analyze_risks():
     df_threat      = data["threat_intelligence"]
     df_remediation = data["remediation_guidance"]
 
-    # Normalise column name from older CSV exports
     if "matched_cve_or_control" in df_threat.columns:
         df_threat.rename(columns={"matched_cve_or_control": "matched_cve"}, inplace=True)
 
-    kev_cves    = fetch_cisa_kev()
-    open_vulns  = df_vulns[df_vulns["status"].str.strip().str.lower() == "open"]
+    kev_cves     = fetch_cisa_kev()
+    open_vulns   = df_vulns[df_vulns["status"].str.strip().str.lower() == "open"]
     scored_risks = []
 
     for _, vuln_row in open_vulns.iterrows():
@@ -151,7 +150,6 @@ def analyze_risks():
             kev_cves=kev_cves,
         )
 
-        # Pull business-service metadata for the report
         service_name = str(asset_row.get("business_service", "")).strip().lower()
         service_rows = df_business[df_business["business_service"].str.strip().str.lower() == service_name]
         if not service_rows.empty:
@@ -176,7 +174,6 @@ def analyze_risks():
             "internet_exposed":     str(asset_row.get("internet_exposed", "No")),
             "owner_team":           risk_details["owner_team"],
             "days_since_seen":      float(asset_row.get("last_seen_days", 0)),
-            # Scoring outputs
             "score":                risk_details["score"],
             "cvss":                 risk_details["cvss"],
             "exploit_status":       risk_details["exploit_status"],
@@ -188,12 +185,10 @@ def analyze_risks():
             "is_orphaned":          risk_details["is_orphaned"],
             "is_stale":             risk_details["is_stale"],
             "asset_criticality_raw": str(asset_row.get("criticality", "medium")),
-            # Business context
             "customer_facing":      customer_facing,
             "compliance_scope":     compliance_scope,
             "rto":                  rto,
             "revenue_impact":       revenue_impact,
-            # Remediation
             "local_remediation_guidance": find_local_remediation(
                 vuln_row.get("vulnerability_name"), df_remediation
             ),
@@ -202,7 +197,6 @@ def analyze_risks():
     if not scored_risks:
         raise HTTPException(status_code=404, detail="No open vulnerabilities found to analyze.")
 
-    # Sort by composite key: score → CVSS → days open (all descending)
     scored_risks.sort(key=lambda x: (x["score"], x["cvss"], x["days_since_seen"]), reverse=True)
     top_risks = scored_risks[:5]
 
@@ -212,7 +206,7 @@ def analyze_risks():
         risk["nist_control"] = retrieved[0] if retrieved else None
 
     try:
-        report_markdown = format_markdown_report(top_risks, llm_wrapper)
+        report_markdown = format_markdown_report(top_risks, llm)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Markdown generation failed: {str(e)}")
 
@@ -223,4 +217,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     print(f"Starting RiskLens AI on port {port}...")
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
