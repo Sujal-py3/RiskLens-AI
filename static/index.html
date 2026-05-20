@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RiskLens AI — Cyber Risk Dashboard</title>
+  <meta name="description" content="RiskLens AI: Intelligent cyber risk analysis powered by NIST SP 800-53 controls, CISA KEV intelligence, and AI-driven prioritization." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --bg-base:        #050914;
+      --bg-surface:     #0b1120;
+      --bg-card:        #0f1827;
+      --bg-card-hover:  #141e30;
+      --border:         rgba(99, 179, 237, 0.10);
+      --border-glow:    rgba(99, 179, 237, 0.30);
+
+      --accent:         #38bdf8;
+      --accent-dim:     rgba(56, 189, 248, 0.15);
+      --accent2:        #818cf8;
+      --accent2-dim:    rgba(129, 140, 248, 0.12);
+      --success:        #34d399;
+      --warning:        #fbbf24;
+      --danger:         #f87171;
+      --danger-dim:     rgba(248, 113, 113, 0.12);
+
+      --text-primary:   #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted:     #475569;
+
+      --radius-sm:      6px;
+      --radius-md:      12px;
+      --radius-lg:      20px;
+      --radius-xl:      28px;
+
+      --shadow-glow:    0 0 40px rgba(56, 189, 248, 0.08);
+      --transition:     all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Background Orbs ── */
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.18;
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #1e40af, transparent); top: -200px; left: -200px; animation-duration: 22s; }
+    .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #0891b2, transparent); bottom: -150px; right: -150px; animation-duration: 18s; }
+    .orb-3 { width: 350px; height: 350px; background: radial-gradient(circle, #7c3aed, transparent); top: 40%; left: 55%; animation-duration: 26s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 40px) scale(1.06); }
+    }
+
+    /* ── Layout ── */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 36px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11, 17, 32, 0.80);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #0369a1, #6d28d9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.30);
+    }
+    .logo-icon svg { width: 22px; height: 22px; }
+    .logo-text h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo-text span {
+      font-size: 0.70rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Status pill */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: var(--transition);
+    }
+    .status-pill.online .status-dot { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse-dot 2s ease infinite; }
+    .status-pill.online { color: var(--success); border-color: rgba(52, 211, 153, 0.25); }
+    .status-pill.offline .status-dot { background: var(--danger); }
+    .status-pill.offline { color: var(--danger); border-color: rgba(248, 113, 113, 0.25); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.6; transform: scale(1.3); }
+    }
+
+    /* ── Main Content ── */
+    main {
+      flex: 1;
+      padding: 48px 36px;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 56px;
+      animation: fadeUp 0.7s ease both;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 999px;
+      background: var(--accent-dim);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+    .hero h2 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #e2e8f0 30%, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      max-width: 560px;
+      margin: 0 auto 36px;
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.75;
+    }
+
+    /* ── Analyze Button ── */
+    .btn-analyze {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #0369a1, #6d28d9);
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 4px 24px rgba(56, 189, 248, 0.20);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-analyze::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+      opacity: 0;
+      transition: var(--transition);
+    }
+    .btn-analyze:hover::before { opacity: 1; }
+    .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(56, 189, 248, 0.30); }
+    .btn-analyze:active { transform: translateY(0); }
+    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-analyze svg { width: 18px; height: 18px; }
+
+    /* Spinner inside button */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .loading .spinner { display: block; }
+    .loading .btn-icon { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      transition: var(--transition);
+    }
+    .stat-card:hover { border-color: var(--border-glow); background: var(--bg-card-hover); }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-value.accent  { color: var(--accent); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warning { color: var(--warning); }
+    .stat-value.danger  { color: var(--danger); }
+    .stat-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Report Section ── */
+    .report-section {
+      animation: fadeUp 0.5s ease both;
+    }
+    .report-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .report-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .report-title-icon {
+      width: 32px; height: 32px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .report-title-icon svg { width: 16px; height: 16px; color: var(--accent); }
+
+    .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-copy:hover { border-color: var(--border-glow); color: var(--text-primary); }
+    .btn-copy svg { width: 14px; height: 14px; }
+
+    /* Tabs */
+    .report-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.80rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .tab-btn.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.20);
+    }
+
+    /* Report Box */
+    .report-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px 40px;
+      min-height: 200px;
+      transition: var(--transition);
+    }
+    .report-box:hover { border-color: var(--border-glow); }
+
+    /* Raw markdown view */
+    .raw-view {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.80rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.7;
+      display: none;
+    }
+    .raw-view.active { display: block; }
+    .rendered-view { display: block; }
+    .rendered-view.hidden { display: none; }
+
+    /* ── Markdown Rendered Styles ── */
+    .rendered-view h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin: 0 0 28px 0;
+    }
+    .rendered-view h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 32px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rendered-view h2::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 1.1em;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+    }
+    .rendered-view h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent2);
+      margin: 20px 0 10px;
+    }
+    .rendered-view h4 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin: 14px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rendered-view p {
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      line-height: 1.75;
+    }
+    .rendered-view ul, .rendered-view ol {
+      padding-left: 22px;
+      margin-bottom: 14px;
+      color: var(--text-secondary);
+    }
+    .rendered-view li { margin-bottom: 6px; line-height: 1.65; }
+    .rendered-view strong { color: var(--text-primary); font-weight: 600; }
+    .rendered-view em { color: var(--accent2); }
+    .rendered-view code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82em;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      border-radius: 4px;
+      padding: 2px 6px;
+      color: var(--accent);
+    }
+    .rendered-view pre {
+      background: rgba(0, 0, 0, 0.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+    .rendered-view pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+    }
+    .rendered-view blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 10px 18px;
+      background: var(--accent-dim);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin: 16px 0;
+      color: var(--text-secondary);
+    }
+    .rendered-view hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+    .rendered-view table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+    }
+    .rendered-view th {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 600;
+      padding: 10px 16px;
+      text-align: left;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rendered-view td {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+    .rendered-view tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    .rendered-view a { color: var(--accent); text-decoration: underline; }
+
+    /* ── Empty / Loading States ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state svg { width: 52px; height: 52px; margin: 0 auto 16px; opacity: 0.4; display: block; }
+    .empty-state p { font-size: 0.90rem; }
+
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    .loading-ring {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(56, 189, 248, 0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px;
+    }
+    .loading-steps {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+    }
+    .loading-step {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .loading-step.visible { opacity: 1; color: var(--accent); }
+
+    /* Error state */
+    .error-state {
+      background: var(--danger-dim);
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      color: var(--danger);
+    }
+    .error-state strong { display: block; margin-bottom: 6px; }
+    .error-state code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.80rem;
+      color: rgba(248, 113, 113, 0.80);
+      white-space: pre-wrap;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    .footer-links a:hover { color: var(--accent); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      header { padding: 14px 20px; }
+      main   { padding: 32px 20px; }
+      .report-box { padding: 24px 20px; }
+      .hero h2 { font-size: 1.8rem; }
+      footer { padding: 16px 20px; }
+    }
+
+    /* ── Timestamp badge ── */
+    .timestamp-badge {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    /* Top-risk severity pills inside rendered report */
+    .rendered-view .risk-high   { color: var(--danger); font-weight: 600; }
+    .rendered-view .risk-medium { color: var(--warning); font-weight: 600; }
+    .rendered-view .risk-low    { color: var(--success); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="app-wrapper">
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>RiskLens AI</h1>
+        <span>Cyber Risk Intelligence Platform</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill" id="statusPill">
+        <div class="status-dot"></div>
+        <span id="statusText">Checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-badge">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        NIST SP 800-53 · CISA KEV · AI-Powered
+      </div>
+      <h2>Intelligent Cyber Risk Analysis</h2>
+      <p>
+        Automatically scores, ranks, and prioritizes open vulnerabilities using a 6-factor deterministic model — enriched with real-time threat intelligence and NIST control recommendations.
+      </p>
+      <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">
+        <span class="spinner" id="btnSpinner"></span>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Run Risk Analysis
+      </button>
+    </section>
+
+    <!-- Stats Row -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-label">Data Sources</div>
+        <div class="stat-value accent">5</div>
+        <div class="stat-sub">CSV datasets loaded</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Scoring Factors</div>
+        <div class="stat-value accent">6</div>
+        <div class="stat-sub">Weighted deterministic model</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">KEV Catalog</div>
+        <div class="stat-value warning" id="kevCount">—</div>
+        <div class="stat-sub">CISA known-exploited CVEs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">NIST Controls</div>
+        <div class="stat-value success">800-53</div>
+        <div class="stat-sub">RAG semantic retrieval</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Top Risks</div>
+        <div class="stat-value danger" id="topRisksCount">—</div>
+        <div class="stat-sub">Prioritized for response</div>
+      </div>
+    </div>
+
+    <!-- Report Section -->
+    <div class="report-section" id="reportSection" style="display:none;">
+      <div class="report-header">
+        <div class="report-title">
+          <div class="report-title-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          Risk Analysis Report
+          <span class="timestamp-badge" id="reportTimestamp"></span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div class="report-tabs">
+            <button class="tab-btn active" id="tabRendered" onclick="switchTab('rendered')">Rendered</button>
+            <button class="tab-btn" id="tabRaw" onclick="switchTab('raw')">Raw Markdown</button>
+          </div>
+          <button class="btn-copy" id="copyBtn" onclick="copyReport()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="report-box">
+        <!-- Rendered Markdown -->
+        <div class="rendered-view" id="renderedView"></div>
+        <!-- Raw Markdown -->
+        <div class="raw-view" id="rawView"></div>
+      </div>
+    </div>
+
+    <!-- Initial empty state (before analysis) -->
+    <div id="emptyState">
+      <div class="report-box" style="margin-top:0;">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+            <path d="M11 8v6M8 11h6"/>
+          </svg>
+          <p>Click <strong>Run Risk Analysis</strong> above to fetch and analyse open vulnerabilities from all data sources.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingState" style="display:none;">
+      <div class="report-box" style="margin-top:0;">
+        <div class="loading-state">
+          <div class="loading-ring"></div>
+          <p>Running risk analysis pipeline…</p>
+          <div class="loading-steps">
+            <div class="loading-step" id="step1">📂 Loading vulnerability datasets</div>
+            <div class="loading-step" id="step2">🌐 Fetching CISA KEV catalog</div>
+            <div class="loading-step" id="step3">⚙️ Scoring &amp; ranking vulnerabilities</div>
+            <div class="loading-step" id="step4">🔎 Retrieving NIST SP 800-53 controls</div>
+            <div class="loading-step" id="step5">📝 Generating executive report</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <span>© 2025 RiskLens AI · Deterministic scoring, no black-box decisions</span>
+    <div class="footer-links">
+      <a href="/docs" target="_blank">API Docs</a>
+      <a href="/analyze" target="_blank">Raw JSON</a>
+      <a href="/" target="_blank">Health Check</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+  /* ─── Config ─── */
+  const API_BASE = '';   // Same origin — works with uvicorn
+  let rawMarkdown = '';
+
+  /* ─── Health Check on page load ─── */
+  async function checkHealth() {
+    const pill   = document.getElementById('statusPill');
+    const label  = document.getElementById('statusText');
+    try {
+      const res = await fetch(`${API_BASE}/`);
+      if (res.ok) {
+        pill.className  = 'status-pill online';
+        label.textContent = 'API Online';
+      } else {
+        throw new Error('Non-OK status');
+      }
+    } catch {
+      pill.className  = 'status-pill offline';
+      label.textContent = 'API Offline';
+    }
+  }
+
+  /* ─── Animated loading steps ─── */
+  const STEPS = ['step1','step2','step3','step4','step5'];
+  let stepTimer = null;
+
+  function animateSteps() {
+    let i = 0;
+    STEPS.forEach(id => document.getElementById(id).classList.remove('visible'));
+    stepTimer = setInterval(() => {
+      if (i < STEPS.length) {
+        document.getElementById(STEPS[i]).classList.add('visible');
+        i++;
+      } else {
+        clearInterval(stepTimer);
+      }
+    }, 950);
+  }
+
+  /* ─── Run Analysis ─── */
+  async function runAnalysis() {
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.querySelector('span.spinner').style.display = 'block';
+
+    document.getElementById('emptyState').style.display   = 'none';
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'block';
+    animateSteps();
+
+    try {
+      const res = await fetch(`${API_BASE}/analyze`);
+      const text = await res.text();
+
+      clearInterval(stepTimer);
+
+      if (!res.ok) {
+        showError(`HTTP ${res.status}`, text);
+        return;
+      }
+
+      rawMarkdown = text;
+      renderReport(text);
+      extractStats(text);
+
+    } catch (err) {
+      clearInterval(stepTimer);
+      showError('Network Error', err.message);
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.querySelector('span.spinner').style.display = 'none';
+      document.getElementById('loadingState').style.display = 'none';
+    }
+  }
+
+  /* ─── Render Markdown Report ─── */
+  function renderReport(md) {
+    const rendered = document.getElementById('renderedView');
+    const raw      = document.getElementById('rawView');
+    const section  = document.getElementById('reportSection');
+
+    // Configure marked options
+    marked.setOptions({ breaks: true, gfm: true });
+    rendered.innerHTML = marked.parse(md);
+    raw.textContent    = md;
+
+    // Timestamp
+    document.getElementById('reportTimestamp').textContent =
+      new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    section.style.display = 'block';
+
+    // Reset tabs
+    document.getElementById('renderedView').classList.remove('hidden');
+    document.getElementById('rawView').classList.remove('active');
+    document.getElementById('tabRendered').classList.add('active');
+    document.getElementById('tabRaw').classList.remove('active');
+
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ─── Extract simple stats from markdown text ─── */
+  function extractStats(md) {
+    // Count risk entries via "Risk #" or "###" headers
+    const riskHeaders = (md.match(/^#{2,3}\s+risk\s+#?\d/gim) || []).length;
+    const count = riskHeaders > 0 ? riskHeaders : ((md.match(/^\*\*Risk Score/gim) || []).length) || 5;
+    document.getElementById('topRisksCount').textContent = Math.min(count, 5);
+
+    // Try to count CVEs in KEV references
+    const kevMatch = md.match(/\d{1,5}\s*known.exploited/i);
+    if (kevMatch) {
+      document.getElementById('kevCount').textContent = kevMatch[0].match(/\d+/)[0];
+    } else {
+      document.getElementById('kevCount').textContent = '1000+';
+    }
+  }
+
+  /* ─── Show Error ─── */
+  function showError(title, detail) {
+    const rendered = document.getElementById('renderedView');
+    rendered.innerHTML = `
+      <div class="error-state">
+        <strong>⚠ ${title}</strong>
+        <code>${escapeHtml(detail)}</code>
+      </div>`;
+    document.getElementById('reportSection').style.display = 'block';
+    document.getElementById('tabRendered').classList.add('active');
+    document.getElementById('tabRaw').classList.remove('active');
+    document.getElementById('renderedView').classList.remove('hidden');
+    document.getElementById('rawView').classList.remove('active');
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ─── Tab Switching ─── */
+  function switchTab(tab) {
+    const rendered = document.getElementById('renderedView');
+    const raw      = document.getElementById('rawView');
+    if (tab === 'rendered') {
+      rendered.classList.remove('hidden');
+      raw.classList.remove('active');
+      document.getElementById('tabRendered').classList.add('active');
+      document.getElementById('tabRaw').classList.remove('active');
+    } else {
+      rendered.classList.add('hidden');
+      raw.classList.add('active');
+      document.getElementById('tabRendered').classList.remove('active');
+      document.getElementById('tabRaw').classList.add('active');
+    }
+  }
+
+  /* ─── Copy Report ─── */
+  async function copyReport() {
+    if (!rawMarkdown) return;
+    try {
+      await navigator.clipboard.writeText(rawMarkdown);
+      const btn = document.getElementById('copyBtn');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Copied!`;
+      setTimeout(() => {
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy`;
+      }, 2000);
+    } catch { /* silent fail */ }
+  }
+
+  /* ─── Init ─── */
+  checkHealth();
+  setInterval(checkHealth, 30000);   // re-check every 30s
+</script>
+</body>
+</html>
