@@ -1,0 +1,16 @@
+Vendor M Payment Processing Addendum
+
+Encryption:
+Tokenization is used for all credit card data. Original PANs are never stored.
+
+Access Control:
+Strict network segmentation isolates the cardholder data environment (CDE). Jump hosts with MFA are required to access the CDE.
+
+Incident Response:
+Dedicated incident response team. PagerDuty alerts for any suspicious CDE activity.
+
+Compliance & Certifications:
+PCI-DSS Level 1 Service Provider. Attestation of Compliance (AoC) is available upon request.
+
+Vulnerability Management:
+Weekly internal and external ASV scans. All vulnerabilities in the CDE are patched immediately.

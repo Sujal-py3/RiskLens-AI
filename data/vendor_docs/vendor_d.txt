@@ -1,0 +1,16 @@
+Vendor D Third-Party Risk Assessment Summary
+
+Encryption:
+Data at rest is not encrypted due to legacy system constraints. We plan to migrate to a new encrypted system by Q4 next year. Transit encryption uses TLS 1.1.
+
+Access Control:
+Basic password policies are enforced (minimum 8 characters). MFA is not currently supported by our core platform.
+
+Incident Response:
+Documented incident response plan exists and is tested bi-annually. Notification to clients occurs within 48 hours of confirmed breach.
+
+Compliance & Certifications:
+Vendor D does not hold PCI-DSS or SOC2 certifications. 
+
+Vulnerability Management:
+No formal vulnerability scanning is performed. We rely on external bug bounties to identify security flaws.

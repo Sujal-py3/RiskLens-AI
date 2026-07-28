@@ -1,0 +1,16 @@
+Vendor E Security Whitepaper
+
+Encryption:
+AES-256 for all data at rest. All communications over public networks use TLS 1.2 or higher.
+
+Access Control:
+MFA is mandatory. We employ principle of least privilege (PoLP) and conduct quarterly access reviews.
+
+Incident Response:
+Highly mature SOC operates 24/7. Incident response plan is tested quarterly. Breach notification is guaranteed within 24 hours.
+
+Compliance & Certifications:
+SOC2 Type II, ISO 27001, HIPAA, and fully PCI-DSS certified (Level 1 Service Provider).
+
+Vulnerability Management:
+Weekly vulnerability scans and annual manual penetration testing. Critical patches applied within 48 hours.

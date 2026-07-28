@@ -1,0 +1,16 @@
+Vendor H Security FAQs
+
+Encryption:
+Yes, we use industry standard encryption. (Details not provided).
+
+Access Control:
+Passwords are required to be changed every 90 days. MFA is optional for user accounts.
+
+Incident Response:
+We have never had a data breach, so we do not have a formal notification timeline.
+
+Compliance & Certifications:
+Self-certified against NIST cybersecurity framework. No PCI-DSS.
+
+Vulnerability Management:
+We patch our servers during our annual maintenance window.

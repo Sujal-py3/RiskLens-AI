@@ -1,0 +1,16 @@
+Vendor K Managed IT Services Document
+
+Encryption:
+Disk-level encryption (BitLocker) on all laptops. Servers use hardware self-encrypting drives.
+
+Access Control:
+MFA is enforced. VPN is required to access any internal resources.
+
+Incident Response:
+Documented IR plan, tested annually via tabletop exercises. 72-hour notification SLA.
+
+Compliance & Certifications:
+SOC2 Type II achieved. PCI-DSS compliance is currently failed due to open network segmentation issues.
+
+Vulnerability Management:
+Quarterly network scans. High severity issues patched within 7 days.

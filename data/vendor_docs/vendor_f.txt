@@ -1,0 +1,16 @@
+Vendor F Compliance Summary
+
+Encryption:
+We use proprietary encryption algorithms for data at rest. Key management is handled manually by the DBA team.
+
+Access Control:
+MFA is enabled for VPN access only. Office network access does not require MFA.
+
+Incident Response:
+No documented incident response plan. 
+
+Compliance & Certifications:
+Currently preparing for SOC2 Type I. PCI-DSS compliance is out of scope for our services.
+
+Vulnerability Management:
+Ad-hoc vulnerability scanning before major software releases.

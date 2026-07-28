@@ -1,0 +1,16 @@
+Vendor J Startup Security Basics
+
+Encryption:
+Database is encrypted using AWS RDS default encryption.
+
+Access Control:
+Developers have admin access to production to facilitate rapid troubleshooting.
+
+Incident Response:
+The CTO will email customers if something goes wrong.
+
+Compliance & Certifications:
+We are a startup and currently do not have formal compliance certifications.
+
+Vulnerability Management:
+We use GitHub dependabot for scanning dependencies.

@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from utils.scoring import calculate_risk_score
 from utils.retrieval import fetch_cisa_kev, NistRAG
 from utils.formatter import GroqClientWrapper, format_markdown_report
+from utils.agentic_loop import AgenticLoop
+from utils.eval_harness import run_eval
 
 load_dotenv()
 
@@ -45,6 +47,13 @@ def _get_llm():
     if _llm is None:
         _llm = GroqClientWrapper()
     return _llm
+
+_agent = None
+def _get_agent():
+    global _agent
+    if _agent is None:
+        _agent = AgenticLoop()
+    return _agent
 
 print("RiskLens AI ready (lightweight mode — heavy components load on first /analyze request).")
 
@@ -211,6 +220,23 @@ def analyze_risks():
         raise HTTPException(status_code=500, detail=f"Markdown generation failed: {str(e)}")
 
     return Response(content=report_markdown, media_type="text/markdown")
+
+
+from pydantic import BaseModel
+class AssessRequest(BaseModel):
+    vendor_id: str
+    question: str
+
+@app.post("/assess")
+async def assess_vendor_endpoint(req: AssessRequest):
+    agent = _get_agent()
+    result = await agent.assess_vendor(req.vendor_id, req.question)
+    return result
+
+@app.get("/eval")
+async def run_eval_endpoint():
+    metrics = await run_eval()
+    return metrics
 
 
 if __name__ == "__main__":

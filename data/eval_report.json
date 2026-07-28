@@ -1,0 +1,308 @@
+{
+  "metrics": {
+    "total_cases": 27,
+    "total_sub_checks": 27,
+    "sub_check_accuracy": "14.8%",
+    "hallucinations_caught": 0,
+    "human_review_flags": 27
+  },
+  "details": [
+    {
+      "question": "Is the vendor compliant with PCI-DSS requirements?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is the vendor compliant with PCI-DSS requirements?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Does the vendor encrypt customer data and how often are keys rotated?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Does the vendor encrypt customer data and how often are keys rotated?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are databases containing PII encrypted at rest?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are databases containing PII encrypted at rest?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is multi-factor authentication enforced for all database access?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is multi-factor authentication enforced for all database access?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Does the vendor have a formal incident response plan that is tested annually?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Does the vendor have a formal incident response plan that is tested annually?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "What encryption standards are used for data at rest and in transit?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "What encryption standards are used for data at rest and in transit?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is the vendor compliant with GDPR and ISO 27001?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is the vendor compliant with GDPR and ISO 27001?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is customer data encrypted at rest?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is customer data encrypted at rest?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "What is the timeline for breach notification?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "What is the timeline for breach notification?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are regular vulnerability scans and penetration tests performed?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are regular vulnerability scans and penetration tests performed?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is the vendor certified as a PCI-DSS Level 1 Service Provider?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is the vendor certified as a PCI-DSS Level 1 Service Provider?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is MFA required and is the principle of least privilege employed?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is MFA required and is the principle of least privilege employed?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is MFA required for office network access?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is MFA required for office network access?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Does the vendor have a documented incident response plan?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Does the vendor have a documented incident response plan?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Does the vendor manage their own encryption keys?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Does the vendor manage their own encryption keys?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are medium severity vulnerabilities patched quickly?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are medium severity vulnerabilities patched quickly?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "What is the vendor's data breach notification SLA?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "What is the vendor's data breach notification SLA?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is the vendor PCI-DSS certified?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is the vendor PCI-DSS certified?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are hardware security keys required for administrative access?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are hardware security keys required for administrative access?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "What compliance certifications does the vendor hold?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "What compliance certifications does the vendor hold?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Do developers have admin access to production systems?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Do developers have admin access to production systems?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is the vendor currently PCI-DSS compliant?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is the vendor currently PCI-DSS compliant?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are laptops encrypted using disk-level encryption?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are laptops encrypted using disk-level encryption?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Is customer data encrypted to prevent unauthorized access?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Is customer data encrypted to prevent unauthorized access?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are shared service accounts used by engineers?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are shared service accounts used by engineers?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "How is credit card data protected?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "How is credit card data protected?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    },
+    {
+      "question": "Are there strict network segmentation controls in place?",
+      "risk_score": 0.5,
+      "sub_checks": [
+        {
+          "sub_check": "Are there strict network segmentation controls in place?",
+          "verdict": "unclear",
+          "hallucination_caught": false
+        }
+      ]
+    }
+  ]
+}

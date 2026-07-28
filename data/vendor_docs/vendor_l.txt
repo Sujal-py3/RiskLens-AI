@@ -1,0 +1,16 @@
+Vendor L Data Processing Agreement
+
+Encryption:
+Data is stored in plain text to ensure rapid indexing and search capabilities.
+
+Access Control:
+Shared service accounts are used for background jobs and sometimes accessed by engineers.
+
+Incident Response:
+In the event of a breach, we will notify the regulatory body within 72 hours, and customers within 30 days.
+
+Compliance & Certifications:
+GDPR compliant (registered DPO). Not PCI-DSS compliant.
+
+Vulnerability Management:
+Annual penetration test. No regular vulnerability scanning in between tests.

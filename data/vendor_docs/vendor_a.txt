@@ -1,0 +1,16 @@
+Vendor A Security and Compliance Summary (SOC2 Type II extract)
+
+Encryption:
+Vendor A ensures that all customer data is encrypted at rest using AES-256 bit encryption. Data in transit is secured using TLS 1.2 or higher. Keys are managed via AWS KMS with automatic rotation every 90 days.
+
+Access Control:
+Role-based access control (RBAC) is enforced across all systems. Multi-factor authentication (MFA) is mandatory for all administrative access to production environments. 
+
+Incident Response:
+Vendor A maintains a documented incident response plan that is tested annually. In the event of a confirmed data breach, customers will be notified within 72 hours of discovery.
+
+Compliance & Certifications:
+Vendor A holds a current SOC2 Type II certification. However, PCI-DSS compliance is currently pending an external audit and is expected to be completed by Q3.
+
+Vulnerability Management:
+External penetration tests are conducted annually by an independent third party. Internal vulnerability scans are run weekly. Critical vulnerabilities are patched within 14 days, and high vulnerabilities within 30 days.

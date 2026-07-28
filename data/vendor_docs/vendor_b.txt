@@ -1,0 +1,16 @@
+Vendor B Security Profile (Self-Assessment Questionnaire)
+
+Encryption:
+All data is encrypted in transit using TLS 1.2. However, data at rest encryption is currently being rolled out and only applies to payment data. Other customer PII is stored unencrypted on legacy databases.
+
+Access Control:
+MFA is implemented for external access, but internal database access only requires a standard username and password. RBAC is partially implemented.
+
+Incident Response:
+There is an informal incident response process, but it is not formally documented or tested annually. Notification timelines are assessed on a case-by-case basis.
+
+Compliance & Certifications:
+Vendor B does not currently hold a SOC2 certification. They claim self-compliance with PCI-DSS but have no third-party audit available.
+
+Vulnerability Management:
+Scanning is performed quarterly. Critical vulnerabilities are patched within 45 days.

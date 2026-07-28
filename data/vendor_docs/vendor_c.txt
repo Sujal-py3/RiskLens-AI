@@ -1,0 +1,16 @@
+Vendor C Information Security Policy Document
+
+Encryption:
+Vendor C enforces strict AES-256 encryption at rest and TLS 1.3 in transit. Key rotation is automated every 30 days.
+
+Access Control:
+Strict zero-trust architecture is in place. MFA is required for all access, and physical security at data centers is guarded 24/7.
+
+Incident Response:
+We lack a dedicated incident response team. In case of an incident, the IT support desk will notify affected customers within 7 days.
+
+Compliance & Certifications:
+Fully compliant with ISO 27001 and GDPR. PCI-DSS compliance is maintained and audited annually.
+
+Vulnerability Management:
+Continuous automated scanning is deployed. Patches for critical zero-days are applied within 24 hours.

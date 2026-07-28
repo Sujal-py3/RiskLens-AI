@@ -1,0 +1,16 @@
+Vendor G Cloud Security Addendum
+
+Encryption:
+Cloud provider default encryption is used for data at rest. We do not manage our own encryption keys.
+
+Access Control:
+Federated SSO via Okta is used for all systems, enforcing MFA and conditional access based on geographic location.
+
+Incident Response:
+Standardized playbook exists for ransomware, data exfiltration, and DDoS. Tested annually. 
+
+Compliance & Certifications:
+SOC2 Type II compliant. PCI-DSS is maintained by our payment gateway sub-processor, not us directly.
+
+Vulnerability Management:
+Monthly scans. Medium/Low vulnerabilities are often accepted as risk and not patched.

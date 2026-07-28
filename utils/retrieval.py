@@ -141,3 +141,75 @@ class NistRAG:
         except Exception as e:
             print(f"Error during cosine similarity retrieval: {e}")
             return []
+
+
+# ── Vendor RAG: FAISS + SentenceTransformers ──────────────────────────────
+
+class VendorRAG:
+    """
+    Retrieves vendor compliance documents using FAISS and SentenceTransformers.
+    """
+    def __init__(self):
+        try:
+            from sentence_transformers import SentenceTransformer
+            import faiss
+            self.model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.index = None
+            self.chunks = []
+            self._build_index()
+        except Exception as e:
+            print(f"Error initializing VendorRAG: {e}")
+            self.model = None
+
+    def _build_index(self):
+        vendor_docs_dir = os.path.join("data", "vendor_docs")
+        if not os.path.exists(vendor_docs_dir):
+            return
+            
+        for filename in os.listdir(vendor_docs_dir):
+            if filename.endswith(".txt"):
+                vendor_id = filename.split(".")[0]
+                filepath = os.path.join(vendor_docs_dir, filename)
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    
+                paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 20]
+                for p in paragraphs:
+                    self.chunks.append({
+                        "vendor_id": vendor_id,
+                        "text": p
+                    })
+                    
+        if not self.chunks:
+            return
+            
+        import faiss
+        import numpy as np
+        
+        texts = [c["text"] for c in self.chunks]
+        embeddings = self.model.encode(texts)
+        
+        dimension = embeddings.shape[1]
+        self.index = faiss.IndexFlatL2(dimension)
+        self.index.add(np.array(embeddings).astype('float32'))
+
+    def retrieve(self, vendor_id: str, query: str, top_k: int = 3) -> list:
+        if not self.model or not self.index:
+            return []
+            
+        import numpy as np
+        query_emb = self.model.encode([query])
+        
+        distances, indices = self.index.search(np.array(query_emb).astype('float32'), top_k * 3)
+        
+        results = []
+        for idx in indices[0]:
+            if idx == -1:
+                continue
+            chunk = self.chunks[idx]
+            if chunk["vendor_id"] == vendor_id or vendor_id == "any":
+                results.append(chunk)
+                if len(results) >= top_k:
+                    break
+                    
+        return results
